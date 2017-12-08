@@ -1,4 +1,5 @@
 from flask import render_template
+from flask_login import login_required
 
 from . import app
 from .database import session, Entry
@@ -44,8 +45,11 @@ def single_entry_view(id):
     return render_template("single_entry.html", entry = entry)
 
 
+from flask_login import current_user
+
 # Get Entry
 @app.route("/entry/add", methods=["GET"])
+@login_required
 def add_entry_get():
     return render_template("add_entry.html")
 
@@ -54,17 +58,21 @@ def add_entry_get():
 from flask import request, redirect, url_for
 
 @app.route("/entry/add", methods=["POST"])
+@login_required
 def add_entry_post():
     entry = Entry(
         title=request.form["title"],
         content=request.form["content"],
+        author=current_user
     )
     session.add(entry)
     session.commit()
     return redirect(url_for("entries"))
 
+
 #Edit Entry
 @app.route("/entry/<id>/edit", methods=["GET"])
+@login_required
 def edit_entry(id):
 
     entry2edit = session.query(Entry)
@@ -76,7 +84,9 @@ def edit_entry(id):
 
     return render_template("edit_entry.html", title = title, content = content)
 
+
 @app.route("/entry/<id>/edit", methods=['POST'])
+@login_required
 def update_entry(id):
 
     entryupdate = Entry(
@@ -88,8 +98,10 @@ def update_entry(id):
     session.commit()
     return redirect(url_for("entries"))
 
+
 #Delete Entry
 @app.route("/entry/<id>/delete")
+@login_required
 def entry_to_delete(id):
     
     entry2delete = session.query(Entry)
@@ -98,9 +110,11 @@ def entry_to_delete(id):
 
     return render_template("delete_entry.html", entry = entry2delete)
 
+
 from flask import flash
 
 @app.route("/entry/<id>/deleted")
+@login_required
 def delete_entry(id):
 
     del_entry = session.query(Entry).filter(Entry.id == id).first()
@@ -109,3 +123,27 @@ def delete_entry(id):
     session.commit()
 
     return redirect(url_for("entries"))
+
+
+from flask import flash
+from flask_login import login_user
+from werkzeug.security import check_password_hash
+from .database import User
+
+
+@app.route("/login", methods=["GET"])
+def login_get():
+    return render_template("login.html")
+
+
+@app.route("/login", methods=["POST"])
+def login_post():
+    email = request.form["email"]
+    password = request.form["password"]
+    user = session.query(User).filter_by(email=email).first()
+    if not user or not check_password_hash(user.password, password):
+        flash("Incorrect username or password", "danger")
+        return redirect(url_for("login_get"))
+
+    login_user(user)
+    return redirect(request.args.get('next') or url_for("entries"))
