@@ -1,5 +1,5 @@
 from flask import render_template
-from flask_login import login_required
+from flask_login import login_required, login_user, LoginManager, logout_user
 
 from . import app
 from .database import session, Entry
@@ -131,6 +131,7 @@ from werkzeug.security import check_password_hash
 from .database import User
 
 
+#Login
 @app.route("/login", methods=["GET"])
 def login_get():
     return render_template("login.html")
@@ -147,3 +148,9 @@ def login_post():
 
     login_user(user)
     return redirect(request.args.get('next') or url_for("entries"))
+
+
+@app.route("/logout")
+def logout():
+    logout_user()
+    return redirect(url_for("entries"))
